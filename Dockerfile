@@ -1,4 +1,3 @@
-# Stage: PHP & Nginx Runtime
 FROM php:8.3-fpm-alpine
 
 # System-Abhängigkeiten
@@ -14,7 +13,7 @@ RUN apk add --no-cache \
 RUN docker-php-ext-install gd zip
 
 # Verzeichnisse erstellen
-RUN mkdir -p /var/www/html /run/nginx /var/log/supervisor /var/www/html/storage
+RUN mkdir -p /var/www/html/public /var/www/html/storage /run/nginx /var/log/supervisor
 
 # Konfigurationen kopieren
 COPY docker/nginx.conf /etc/nginx/http.d/default.conf
@@ -24,9 +23,9 @@ COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY . /var/www/html
 WORKDIR /var/www/html
 
-# BERECHTIGUNGEN KORRIGIERT:
-# Wir setzen den Besitzer auf www-data (den Standard-User für PHP-FPM/Nginx)
-RUN chown -R www-data:www-data /var/www/html/storage && \
+# Berechtigungen für den Web-User setzen
+RUN chown -R www-data:www-data /var/www/html && \
+    chmod -R 755 /var/www/html/public && \
     chmod -R 775 /var/www/html/storage
 
 EXPOSE 80
