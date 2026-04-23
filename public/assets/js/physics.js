@@ -23,24 +23,32 @@ class SandPhysics {
         const config = window.SandConfig.sizes[sizeKey];
         const container = this.canvas.parentElement;
 
-        // Prüfung auf deinen Config-Key 'FULL'
+        // Verfügbaren Platz berechnen (Viewport minus Header/Footer/Abstände)
+        const maxAvailableWidth = window.innerWidth - 40;
+        const maxAvailableHeight = window.innerHeight - 220; // 220px Puffer für UI
+
         if (sizeKey === 'FULL') {
             container.classList.add('fullscreen-mode');
-            
-            // Berechne verfügbaren Platz (Viewport minus Header/Footer ca. 180px)
-            const vWidth = window.innerWidth;
-            const vHeight = window.innerHeight - 180; 
-
-            this.width = Math.floor(vWidth / this.cellSize);
-            this.height = Math.floor(vHeight / this.cellSize);
+            this.width = Math.floor(window.innerWidth / this.cellSize);
+            this.height = Math.floor((window.innerHeight - 180) / this.cellSize);
         } else {
             container.classList.remove('fullscreen-mode');
             
-            let cfgWidth = config ? config.width : 200;
-            let cfgHeight = config ? config.height : 300;
+            // Werte aus Config holen
+            let targetWidth = config ? config.width : 200;
+            let targetHeight = config ? config.height : 300;
 
-            this.width = Math.floor(cfgWidth);
-            this.height = Math.floor(cfgHeight);
+            // Größen-Check: Wenn die Flasche zu groß für den Screen ist, skalieren wir sie runter
+            // Wir nutzen hier Pixel-Werte für den Vergleich
+            let pixelHeight = targetHeight * this.cellSize;
+            if (pixelHeight > maxAvailableHeight) {
+                const ratio = maxAvailableHeight / pixelHeight;
+                targetHeight = Math.floor(targetHeight * ratio);
+                targetWidth = Math.floor(targetWidth * ratio);
+            }
+
+            this.width = targetWidth;
+            this.height = targetHeight;
         }
 
         this.canvas.width = this.width * this.cellSize;
