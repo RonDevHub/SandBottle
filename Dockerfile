@@ -1,36 +1,31 @@
 FROM php:8.3-fpm-alpine
 
 # System-Abhängigkeiten
-RUN apk add --no-cache \
-    nginx \
-    supervisor \
-    libpng-dev \
-    libzip-dev \
-    zip \
-    unzip
+RUN apk add --no-cache nginx supervisor libpng-dev libzip-dev zip unzip
 
 # PHP Extensions
 RUN docker-php-ext-install gd zip
 
-# Verzeichnisse für Logs und Prozesse
+# Verzeichnisse erstellen
 RUN mkdir -p /run/nginx /var/log/supervisor /var/www/html/storage /var/www/html/public
 
-# Konfigurationsdateien kopieren
+# ALTE CONFIGS LÖSCHEN (Wichtig!)
+RUN rm -rf /etc/nginx/http.d/* /etc/nginx/conf.d/*
+
+# Konfigurationen kopieren
 COPY docker/nginx.conf /etc/nginx/http.d/default.conf
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Den gesamten Projekt-Code kopieren
+# Projektdateien kopieren
 WORKDIR /var/www/html
 COPY . .
 
-# Berechtigungen: Wir setzen alles auf den User 'www-data'
-# PHP-FPM läuft auf Alpine standardmäßig als www-data
-RUN chown -R www-data:www-data /var/www/html && \
-    chmod -R 755 /var/www/html && \
-    chmod -R 775 /var/www/html/storage
+# DEBUG: Zeige im Log an, wo die Dateien liegen (Hilft uns bei der Fehlersuche)
+RUN echo "Inhalt von /var/www/html/public:" && ls -R /var/www/html/public
 
-# Nginx User-Konflikt lösen: Wir lassen Nginx im Hauptprozess als www-data laufen
-RUN sed -i 's/user nginx;/user www-data;/g' /etc/nginx/nginx.conf || echo "user www-data;" >> /etc/nginx/nginx.conf
+# Berechtigungen
+RUN chown -R www-data:www-data /var/www/html && \
+    chmod -R 755 /var/www/html
 
 EXPOSE 80
 
