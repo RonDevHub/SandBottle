@@ -1,6 +1,6 @@
 FROM php:8.3-fpm-alpine
 
-# System-Abhängigkeiten installieren
+# System-Abhängigkeiten
 RUN apk add --no-cache \
     nginx \
     supervisor \
@@ -12,25 +12,24 @@ RUN apk add --no-cache \
 # PHP Extensions
 RUN docker-php-ext-install gd zip
 
-# Notwendige System-Verzeichnisse erstellen
-RUN mkdir -p /run/nginx /var/log/supervisor /var/www/html/storage /var/www/html/public
+# Verzeichnisse erstellen
+RUN mkdir -p /var/www/html /run/nginx /var/log/supervisor
 
-# Konfigurationsdateien kopieren
+# Nginx User auf www-data umstellen (wichtig für Alpine)
+RUN sed -i 's/user nginx;/user www-data;/g' /etc/nginx/nginx.conf
+
+# Konfigurationen kopieren
 COPY docker/nginx.conf /etc/nginx/http.d/default.conf
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Das gesamte Projekt in das Arbeitsverzeichnis kopieren
+# Projektdateien kopieren
 WORKDIR /var/www/html
 COPY . .
 
-# Berechtigungen setzen
-# Der User 'www-data' muss Besitzer des Codes sein
+# Berechtigungen für das gesamte Projekt setzen
 RUN chown -R www-data:www-data /var/www/html && \
-    chmod -R 755 /var/www/html/public && \
-    chmod -R 775 /var/www/html/storage
+    chmod -R 755 /var/www/html
 
-# Nginx soll auf Port 80 lauschen
 EXPOSE 80
 
-# Start über Supervisor
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
