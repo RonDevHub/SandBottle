@@ -9,23 +9,23 @@ RUN docker-php-ext-install gd zip
 # Verzeichnisse erstellen
 RUN mkdir -p /run/nginx /var/log/supervisor /var/www/html/storage /var/www/html/public
 
-# ALTE CONFIGS LÖSCHEN (Wichtig!)
-RUN rm -rf /etc/nginx/http.d/* /etc/nginx/conf.d/*
+# Nginx Standard-Configs radikal entfernen
+RUN rm -f /etc/nginx/http.d/default.conf && \
+    rm -f /etc/nginx/conf.d/default.conf
 
-# Konfigurationen kopieren
-COPY docker/nginx.conf /etc/nginx/http.d/default.conf
+# Unsere Konfigurationen kopieren
+COPY docker/nginx.conf /etc/nginx/http.d/sandbottle.conf
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # Projektdateien kopieren
 WORKDIR /var/www/html
 COPY . .
 
-# DEBUG: Zeige im Log an, wo die Dateien liegen (Hilft uns bei der Fehlersuche)
-RUN echo "Inhalt von /var/www/html/public:" && ls -R /var/www/html/public
-
-# Berechtigungen
+# Berechtigungen (755 für Ordner, damit Nginx 'reinschauen' darf)
 RUN chown -R www-data:www-data /var/www/html && \
-    chmod -R 755 /var/www/html
+    find /var/www/html -type d -exec chmod 755 {} \; && \
+    find /var/www/html -type f -exec chmod 644 {} \; && \
+    chmod -R 775 /var/www/html/storage
 
 EXPOSE 80
 
