@@ -2,7 +2,7 @@
 
 Eine meditative Web-App zur Erstellung von Sandkunst. Entspanne dich, während du bunten Sand in verschiedene Flaschen rieseln lässt.
 
-## 🇩🇪 Features (Deutsch)
+## Features
 - **Interaktive Physik:** Realistische "Falling Sand" Simulation via JavaScript Canvas.
 - **Modular:** Wähle zwischen Flaschengrößen S, M, L oder einem Vollbild-Modus.
 - **Farben:** 5 anpassbare Farbslots für deine Kunstwerke.
