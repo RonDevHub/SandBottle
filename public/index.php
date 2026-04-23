@@ -63,7 +63,7 @@ $playlist = $audioHandler->getPlaylist();
             <div class="flex flex-col gap-2">
                 <span class="text-xs uppercase text-slate-400 font-semibold">Zen-Sound</span>
                 <div class="flex items-center gap-3 bg-slate-800 rounded px-3 py-2">
-                    <select id="select-audio" class="bg-transparent text-sm outline-none text-white">
+                    <select id="select-audio" class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm outline-none focus:border-amber-400 text-white">
                         <option value="">Aus</option>
                         <?php foreach ($playlist as $track): ?>
                             <option value="<?= htmlspecialchars($track['url']) ?>"><?= htmlspecialchars($track['name']) ?></option>
