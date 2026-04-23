@@ -1,104 +1,129 @@
-class SandPhysics {
-    constructor(canvasId) {
-        this.canvas = document.getElementById(canvasId);
-        this.ctx = this.canvas.getContext('2d', { alpha: false });
-        this.width = 0;
-        this.height = 0;
-        this.grid = [];
-        this.cellSize = 2; // Ein Sandkorn = 2x2 Pixel für bessere Performance
-        this.currentColor = '#f0e68c';
-        this.isRaining = false;
-    }
+/**
+ * 🏺 SandBottle Physics Engine
+ * Kern-Logik für Partikel-Simulation und Input-Handling
+ */
 
-    setup(sizeKey) {
-        const config = window.SandConfig.sizes[sizeKey];
-        this.width = config.width || Math.floor(window.innerWidth / this.cellSize);
-        this.height = config.height || Math.floor((window.innerHeight - 200) / this.cellSize);
-        
-        this.canvas.width = this.width * this.cellSize;
-        this.canvas.height = this.height * this.cellSize;
-        
-        this.grid = Array(this.width).fill().map(() => Array(this.height).fill(null));
-        this.clear();
-    }
+const canvas = document.getElementById('sand-canvas');
+const ctx = canvas.getContext('2d', { alpha: false });
 
-    clear() {
-        this.grid = Array(this.width).fill().map(() => Array(this.height).fill(null));
-        this.ctx.fillStyle = '#000';
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    }
+const physics = {
+    width: 200,   // Interne Auflösung (unabhängig von CSS-Größe)
+    height: 300,
+    grid: [],
+    colors: [0, "#E2C799", "#C08261", "#9A4444", "#5C8374", "#1B4242"], // Slot 0 ist leer
+    
+    setup(w, h) {
+        this.width = w;
+        this.height = h;
+        canvas.width = w;
+        canvas.height = h;
+        this.grid = Array(this.width).fill().map(() => Array(this.height).fill(0));
+    },
+
+    setParticle(x, y, colorIndex) {
+        if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+            // Nur setzen, wenn das Pixel noch leer ist
+            if (this.grid[x][y] === 0) {
+                this.grid[x][y] = colorIndex;
+            }
+        }
+    },
 
     update() {
-        // Wir iterieren von unten nach oben, damit Sand korrekt fällt
+        // Wir iterieren von unten nach oben, damit Partikel nicht 
+        // in einem einzigen Frame durch den ganzen Schirm fallen (Teleport-Effekt)
         for (let y = this.height - 2; y >= 0; y--) {
             for (let x = 0; x < this.width; x++) {
-                if (this.grid[x][y]) {
-                    const color = this.grid[x][y];
-                    
-                    if (!this.grid[x][y + 1]) { // Direkt untere Zelle frei
-                        this.grid[x][y + 1] = color;
-                        this.grid[x][y] = null;
-                    } else {
-                        // Diagonal checken
-                        let dir = Math.random() < 0.5 ? -1 : 1;
-                        if (x + dir >= 0 && x + dir < this.width && !this.grid[x + dir][y + 1]) {
-                            this.grid[x + dir][y + 1] = color;
-                            this.grid[x][y] = null;
-                        }
+                let p = this.grid[x][y];
+                if (p > 0) {
+                    // 1. Direkt darunter frei?
+                    if (this.grid[x][y + 1] === 0) {
+                        this.grid[x][y + 1] = p;
+                        this.grid[x][y] = 0;
+                    } 
+                    // 2. Diagonal links unten frei?
+                    else if (x > 0 && this.grid[x - 1][y + 1] === 0) {
+                        this.grid[x - 1][y + 1] = p;
+                        this.grid[x][y] = 0;
+                    }
+                    // 3. Diagonal rechts unten frei?
+                    else if (x < this.width - 1 && this.grid[x + 1][y + 1] === 0) {
+                        this.grid[x + 1][y + 1] = p;
+                        this.grid[x][y] = 0;
                     }
                 }
             }
         }
-    }
+    },
 
-    draw() {
-        this.ctx.fillStyle = '#1a1a1a';
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    render() {
+        // Canvas leeren (Schwarz oder Hintergrundfarbe)
+        ctx.fillStyle = "#000"; 
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+        // Partikel zeichnen
         for (let x = 0; x < this.width; x++) {
             for (let y = 0; y < this.height; y++) {
-                if (this.grid[x][y]) {
-                    this.ctx.fillStyle = this.grid[x][y];
-                    this.ctx.fillRect(x * this.cellSize, y * this.cellSize, this.cellSize, this.cellSize);
+                let colorIdx = this.grid[x][y];
+                if (colorIdx > 0) {
+                    ctx.fillStyle = this.colors[colorIdx];
+                    ctx.fillRect(x, y, 1, 1);
                 }
             }
         }
     }
+};
 
-    addSand(x, y) {
-        const gridX = Math.floor(x / this.cellSize);
-        const gridY = Math.floor(y / this.cellSize);
-        
-        // Kleiner Radius für mehr "Rieseln"
-        for(let i = -1; i <= 1; i++) {
-            for(let j = -1; j <= 1; j++) {
-                if(Math.random() > 0.3) {
-                    let nx = gridX + i;
-                    let ny = gridY + j;
-                    if (nx >= 0 && nx < this.width && ny >= 0 && ny < this.height) {
-                        if (!this.grid[nx][ny]) this.grid[nx][ny] = this.currentColor;
-                    }
-                }
-            }
-        }
-    }
+// --- INPUT HANDLING ---
 
-    // RLE Export Logik
-    getExportData() {
-        const flatGrid = this.grid.flat();
-        const rle = [];
-        let count = 1;
-        let current = flatGrid[0];
+let isDrawing = false;
+let mouseX = 0;
+let mouseY = 0;
+let currentColor = 1; // Standardfarbe: Sand
 
-        for (let i = 1; i <= flatGrid.length; i++) {
-            if (flatGrid[i] === current && i < flatGrid.length) {
-                count++;
-            } else {
-                rle.push([count, current]);
-                count = 1;
-                current = flatGrid[i];
-            }
-        }
-        return rle;
-    }
+function getMousePos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    
+    // Präzise Umrechnung der Maus-Koordinaten auf die interne Grid-Auflösung
+    mouseX = Math.floor((clientX - rect.left) / (rect.width / canvas.width));
+    mouseY = Math.floor((clientY - rect.top) / (rect.height / canvas.height));
 }
+
+// Events für Maus und Touch
+const startDraw = (e) => { isDrawing = true; getMousePos(e); };
+const stopDraw = () => { isDrawing = false; };
+const moveDraw = (e) => { getMousePos(e); };
+
+canvas.addEventListener('mousedown', startDraw);
+window.addEventListener('mouseup', stopDraw);
+canvas.addEventListener('mousemove', moveDraw);
+
+canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDraw(e); }, {passive: false});
+window.addEventListener('touchend', stopDraw);
+canvas.addEventListener('touchmove', (e) => { e.preventDefault(); moveDraw(e); }, {passive: false});
+
+// --- MAIN LOOP ---
+
+physics.setup(200, 300); // Initialisierung der Flasche
+
+function loop() {
+    if (isDrawing) {
+        // Erzeugt einen "Sprüh-Effekt" mit Radius 2 für schöneres Rieseln
+        for (let dx = -2; dx <= 2; dx++) {
+            for (let dy = -2; dy <= 2; dy++) {
+                if (Math.random() > 0.6) { // Dichte des Sandes
+                    physics.setParticle(mouseX + dx, mouseY + dy, currentColor);
+                }
+            }
+        }
+    }
+
+    physics.update();
+    physics.render();
+    requestAnimationFrame(loop);
+}
+
+// Start der Engine
+requestAnimationFrame(loop);
