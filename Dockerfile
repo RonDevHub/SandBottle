@@ -12,23 +12,25 @@ RUN apk add --no-cache \
 # PHP Extensions
 RUN docker-php-ext-install gd zip
 
-# Verzeichnisse erstellen
-RUN mkdir -p /var/www/html /run/nginx /var/log/supervisor
+# Verzeichnisse für Logs und Prozesse
+RUN mkdir -p /run/nginx /var/log/supervisor /var/www/html/storage /var/www/html/public
 
-# Nginx User auf www-data umstellen (wichtig für Alpine)
-RUN sed -i 's/user nginx;/user www-data;/g' /etc/nginx/nginx.conf
-
-# Konfigurationen kopieren
+# Konfigurationsdateien kopieren
 COPY docker/nginx.conf /etc/nginx/http.d/default.conf
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Projektdateien kopieren
+# Den gesamten Projekt-Code kopieren
 WORKDIR /var/www/html
 COPY . .
 
-# Berechtigungen für das gesamte Projekt setzen
+# Berechtigungen: Wir setzen alles auf den User 'www-data'
+# PHP-FPM läuft auf Alpine standardmäßig als www-data
 RUN chown -R www-data:www-data /var/www/html && \
-    chmod -R 755 /var/www/html
+    chmod -R 755 /var/www/html && \
+    chmod -R 775 /var/www/html/storage
+
+# Nginx User-Konflikt lösen: Wir lassen Nginx im Hauptprozess als www-data laufen
+RUN sed -i 's/user nginx;/user www-data;/g' /etc/nginx/nginx.conf || echo "user www-data;" >> /etc/nginx/nginx.conf
 
 EXPOSE 80
 
