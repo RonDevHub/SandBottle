@@ -36,11 +36,11 @@ $playlist = $audioHandler->getPlaylist();
         </div>
     </header>
 
-    <main class="flex-1 relative flex items-center justify-center overflow-hidden bg-[#121212]">
-        <div class="canvas-container">
-            <canvas id="sand-canvas"></canvas>
-        </div>
-    </main>
+   <main class="flex-1 relative flex items-center justify-center overflow-hidden bg-[#0f0f0f]">
+    <div class="canvas-container">
+        <canvas id="sand-canvas"></canvas>
+    </div>
+   </main>
 
     <footer class="p-6 bg-slate-900 border-t border-slate-800 z-10">
         <div class="max-w-4xl mx-auto flex flex-wrap gap-8 justify-center items-end">
