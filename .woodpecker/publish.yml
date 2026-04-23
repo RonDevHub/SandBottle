@@ -4,7 +4,7 @@ steps:
     image: woodpeckerci/plugin-kaniko
     settings:
       registry: ghcr.io
-      repo: rondevhub/mailshield
+      repo: rondevhub/sandbottle
       username:
         from_secret: ghcr_user
       password:
@@ -21,7 +21,7 @@ steps:
     image: woodpeckerci/plugin-kaniko
     settings:
       registry: ghcr.io
-      repo: rondevhub/mailshield
+      repo: rondevhub/sandbottle
       username:
         from_secret: ghcr_user
       password:
@@ -38,7 +38,7 @@ steps:
     image: woodpeckerci/plugin-kaniko
     settings:
       registry: ghcr.io
-      repo: rondevhub/mailshield
+      repo: rondevhub/sandbottle
       username:
         from_secret: ghcr_user
       password:
