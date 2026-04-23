@@ -4,6 +4,47 @@ const colorSlots = ['#f0e68c', '#e2725b', '#85bb65', '#4682b4', '#9370db'];
 function initUI() {
     physics.setup('S');
 
+  // Import Logik
+const importInput = document.createElement('input');
+importInput.type = 'file';
+importInput.accept = '.json';
+importInput.style.display = 'none';
+document.body.appendChild(importInput);
+
+document.getElementById('btn-backup').oncontextmenu = (e) => {
+    e.preventDefault();
+    importInput.click();
+};
+// Hinweis: Linksklick = Save, Rechtsklick (oder langer Druck) = Load
+// Oder wir fügen einen dedizierten Load-Button im HTML hinzu:
+// <button id="btn-load" class="bg-amber-600 ...">Load</button>
+
+importInput.onchange = async (e) => {
+    const file = e.target.files[0];
+    const formData = new FormData();
+    formData.append('backup', file);
+
+    const res = await fetch('/import.php', { method: 'POST', body: formData });
+    const data = await res.json();
+
+    if (data.error) {
+        alert("Fehler: " + data.error);
+        return;
+    }
+
+    // Grid wiederherstellen
+    physics.setup(data.size);
+    let flatIndex = 0;
+    data.grid_rle.forEach(([count, color]) => {
+        for (let i = 0; i < count; i++) {
+            const x = Math.floor(flatIndex / physics.height);
+            const y = flatIndex % physics.height;
+            physics.grid[x][y] = color;
+            flatIndex++;
+        }
+    });
+};
+
     // Farbfelder generieren
     const container = document.getElementById('color-slots');
     colorSlots.forEach((color, i) => {
