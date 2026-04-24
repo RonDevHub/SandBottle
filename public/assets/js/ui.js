@@ -2,87 +2,82 @@ const physics = new SandPhysics('sand-canvas');
 const colorSlots = ['#f0e68c', '#e2725b', '#85bb65', '#4682b4', '#9370db'];
 
 function initUI() {
-    physics.setup('S');
+    // Initialisierung der Engine (startet internen Loop und Input-Handler)
+    physics.setup(document.getElementById('select-size').value);
 
-  // Import Logik
-const importInput = document.createElement('input');
-importInput.type = 'file';
-importInput.accept = '.json';
-importInput.style.display = 'none';
-document.body.appendChild(importInput);
+    // --- Import Logik ---
+    const importInput = document.createElement('input');
+    importInput.type = 'file';
+    importInput.accept = '.json';
+    importInput.style.display = 'none';
+    document.body.appendChild(importInput);
 
-document.getElementById('btn-backup').oncontextmenu = (e) => {
-    e.preventDefault();
-    importInput.click();
-};
-// Hinweis: Linksklick = Save, Rechtsklick (oder langer Druck) = Load
-// Oder wir fügen einen dedizierten Load-Button im HTML hinzu:
-// <button id="btn-load" class="bg-amber-600 ...">Load</button>
+    // Rechtsklick auf Backup = Import
+    document.getElementById('btn-backup').oncontextmenu = (e) => {
+        e.preventDefault();
+        importInput.click();
+    };
 
-importInput.onchange = async (e) => {
-    const file = e.target.files[0];
-    const formData = new FormData();
-    formData.append('backup', file);
+    importInput.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const data = JSON.parse(event.target.result);
+                physics.setup(data.size);
+                
+                // Grid wiederherstellen
+                let flatIndex = 0;
+                data.grid_rle.forEach(([count, color]) => {
+                    for (let i = 0; i < count; i++) {
+                        const x = Math.floor(flatIndex / physics.height);
+                        const y = flatIndex % physics.height;
+                        if (x < physics.width && y < physics.height) {
+                            physics.grid[x][y] = color;
+                        }
+                        flatIndex++;
+                    }
+                });
+            } catch (err) {
+                alert("Fehler beim Laden des Backups");
+            }
+        };
+        reader.readAsText(file);
+    };
 
-    const res = await fetch('/import.php', { method: 'POST', body: formData });
-    const data = await res.json();
-
-    if (data.error) {
-        alert("Fehler: " + data.error);
-        return;
-    }
-
-    // Grid wiederherstellen
-    physics.setup(data.size);
-    let flatIndex = 0;
-    data.grid_rle.forEach(([count, color]) => {
-        for (let i = 0; i < count; i++) {
-            const x = Math.floor(flatIndex / physics.height);
-            const y = flatIndex % physics.height;
-            physics.grid[x][y] = color;
-            flatIndex++;
-        }
-    });
-};
-
-    // Farbfelder generieren
+    // --- Farbfelder generieren ---
     const container = document.getElementById('color-slots');
     colorSlots.forEach((color, i) => {
         const input = document.createElement('input');
         input.type = 'color';
         input.value = color;
-        input.className = "w-10 h-10 rounded cursor-pointer border-2 border-slate-700";
+        input.className = "w-10 h-10 rounded cursor-pointer border-2 border-slate-700 bg-transparent";
+        
         input.onchange = (e) => {
             colorSlots[i] = e.target.value;
             physics.currentColor = e.target.value;
         };
-        input.onclick = () => physics.currentColor = colorSlots[i];
+        
+        input.onclick = () => {
+            physics.currentColor = colorSlots[i];
+            // Visuelles Feedback: Alle Rahmen zurücksetzen, diesen markieren
+            container.querySelectorAll('input').forEach(inp => inp.classList.replace('border-amber-400', 'border-slate-700'));
+            input.classList.replace('border-slate-700', 'border-amber-400');
+        };
         container.appendChild(input);
     });
 
-    // Event Listener für Maus/Touch
-    const handleInput = (e) => {
-        if (e.buttons === 1 || e.type === 'touchstart' || e.type === 'touchmove') {
-            const rect = physics.canvas.getBoundingClientRect();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            physics.addSand(clientX - rect.left, clientY - rect.top);
-        }
-    };
-
-    physics.canvas.addEventListener('mousemove', handleInput);
-    physics.canvas.addEventListener('mousedown', handleInput);
-    physics.canvas.addEventListener('touchstart', handleInput);
-    physics.canvas.addEventListener('touchmove', handleInput);
-
+    // --- UI Controls ---
     document.getElementById('select-size').onchange = (e) => physics.setup(e.target.value);
     document.getElementById('btn-reset').onclick = () => physics.clear();
 
     // PNG Export
     document.getElementById('btn-save-png').onclick = () => {
         const link = document.createElement('a');
-        link.download = 'sand-art.png';
-        link.href = physics.canvas.toDataURL();
+        link.download = 'sandkunst.png';
+        link.href = physics.canvas.toDataURL('image/png');
         link.click();
     };
 
@@ -99,15 +94,8 @@ importInput.onchange = async (e) => {
         a.href = url;
         a.download = `sand-backup-${Date.now()}.json`;
         a.click();
+        URL.revokeObjectURL(url);
     };
-
-    // Game Loop
-    function loop() {
-        physics.update();
-        physics.draw();
-        requestAnimationFrame(loop);
-    }
-    loop();
 }
 
 document.addEventListener('DOMContentLoaded', initUI);
