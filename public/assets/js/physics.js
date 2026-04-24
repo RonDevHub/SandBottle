@@ -16,8 +16,8 @@ class SandPhysics {
         this.physicsSpeed = 2; 
         this.loopRunning = false;
         
-        // NEU: Sperre, damit pro Frame nur einmal Sand hinzugefügt wird
-        this.lastSandFrame = -1;
+        // Verhindert doppelte Strahlen im selben Frame
+        this.lastProcessedFrame = -1;
 
         this._initInputHandlers();
     }
@@ -32,10 +32,8 @@ class SandPhysics {
             this.height = Math.floor((window.innerHeight - 180) / this.cellSize);
         } else {
             container.classList.remove('fullscreen-mode');
-            let targetWidth = config ? config.width : 200;
-            let targetHeight = config ? config.height : 300;
-            this.width = targetWidth;
-            this.height = targetHeight;
+            this.width = config ? config.width : 200;
+            this.height = config ? config.height : 300;
         }
 
         this.canvas.width = this.width * this.cellSize;
@@ -49,65 +47,50 @@ class SandPhysics {
     }
 
     _initInputHandlers() {
-        // Vereinheitlichte Funktion für alle Eingaben
-        const handleInput = (e) => {
-            if (!this.isMouseDown) return;
-            
+        const updateCoords = (e) => {
             const rect = this.canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
             
-            // Präzise Berechnung der Grid-Koordinaten
             this.mouseX = (clientX - rect.left) * (this.canvas.width / rect.width);
             this.mouseY = (clientY - rect.top) * (this.canvas.height / rect.height);
         };
 
-        // MAUS EVENTS
-        this.canvas.addEventListener('mousedown', (e) => {
+        const onDown = (e) => {
             this.isMouseDown = true;
-            handleInput(e);
-        });
+            updateCoords(e);
+            if(e.cancelable) e.preventDefault(); 
+        };
 
-        window.addEventListener('mouseup', () => {
-            this.isMouseDown = false;
-        });
+        const onMove = (e) => {
+            if (this.isMouseDown) {
+                updateCoords(e);
+                if(e.cancelable) e.preventDefault();
+            }
+        };
 
-        this.canvas.addEventListener('mousemove', handleInput);
+        const onUp = () => { this.isMouseDown = false; };
 
-        // TOUCH EVENTS (mit passive: false um Scrollen zu verhindern)
-        this.canvas.addEventListener('touchstart', (e) => {
-            e.preventDefault(); // Verhindert zusätzliche Maus-Emulation
-            this.isMouseDown = true;
-            handleInput(e);
-        }, { passive: false });
+        // Event-Listener mit passive: false, um Browser-Interferenzen zu stoppen
+        this.canvas.addEventListener('mousedown', onDown);
+        this.canvas.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
 
-        this.canvas.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            handleInput(e);
-        }, { passive: false });
-
-        window.addEventListener('touchend', () => {
-            this.isMouseDown = false;
-        });
-    }
-
-    clear() {
-        this.grid = Array(this.width).fill().map(() => Array(this.height).fill(0));
-        this.ctx.fillStyle = '#0a0a0a';
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.canvas.addEventListener('touchstart', onDown, { passive: false });
+        this.canvas.addEventListener('touchmove', onMove, { passive: false });
+        window.addEventListener('touchend', onUp);
     }
 
     update() {
-        // Sand-Logik: Nur einmal pro Frame ausführen
-        if (this.isMouseDown && this.frameCounter !== this.lastSandFrame) {
+        // Kern-Fix: addSand wird NUR HIER aufgerufen, max. einmal pro Update-Zyklus
+        if (this.isMouseDown && this.frameCounter !== this.lastProcessedFrame) {
             this.addSand(this.mouseX, this.mouseY);
-            this.lastSandFrame = this.frameCounter;
+            this.lastProcessedFrame = this.frameCounter;
         }
 
         this.frameCounter++;
         if (this.frameCounter % this.physicsSpeed !== 0) return;
 
-        // Sand-Physik (von unten nach oben berechnen)
         for (let y = this.height - 2; y >= 0; y--) {
             for (let x = 0; x < this.width; x++) {
                 const color = this.grid[x][y];
@@ -148,16 +131,13 @@ class SandPhysics {
         const gridX = Math.floor(x / this.cellSize);
         const gridY = Math.floor(y / this.cellSize);
         const radius = 2;
-
         for(let i = -radius; i <= radius; i++) {
             for(let j = -radius; j <= radius; j++) {
                 if(Math.random() > 0.4 && (i*i + j*j <= radius*radius)) {
                     let nx = gridX + i;
                     let ny = gridY + j;
                     if (nx >= 0 && nx < this.width && ny >= 0 && ny < this.height) {
-                        if (!this.grid[nx][ny]) {
-                            this.grid[nx][ny] = this.currentColor;
-                        }
+                        if (!this.grid[nx][ny]) this.grid[nx][ny] = this.currentColor;
                     }
                 }
             }
@@ -171,5 +151,9 @@ class SandPhysics {
             requestAnimationFrame(tick);
         };
         requestAnimationFrame(tick);
+    }
+
+    clear() {
+        this.grid = Array(this.width).fill().map(() => Array(this.height).fill(0));
     }
 }
